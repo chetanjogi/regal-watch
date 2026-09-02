@@ -67,6 +67,25 @@ python cinemark_watch.py --find-movie "paradise"
 python cinemark_watch.py --status
 ```
 
+## Running in the cloud (laptop off)
+
+The repo ships a GitHub Actions workflow (`.github/workflows/watch.yml`) that
+starts a 50-minute polling job every 30 minutes, so two jobs overlap and there
+is never a gap. Each job polls every 4 minutes, so detection is under 5 minutes.
+Public repos get unlimited free Actions minutes.
+
+- `config.cloud.json` is the public config (no secrets).
+- Add repository secrets: `NTFY_TOPIC` (required), and optionally `SMTP_USER`,
+  `SMTP_PASSWORD`, `EMAIL_TO` for Gmail alerts.
+- Alert state is committed back to the repo (`state*.json`) so jobs never
+  repeat an alert.
+- Regal's JSON API blocks datacenter IPs; the watcher automatically falls back
+  to reading the theatre page, which carries the same board data. Cloud alerts
+  therefore link to the theatre page for each date rather than to individual
+  showtimes.
+- Manual test: Actions tab, "Regal + Cinemark watch", Run workflow, set
+  loop_minutes to 1.
+
 ## Notification channels
 
 | Channel | Setup | Reaches your phone? |

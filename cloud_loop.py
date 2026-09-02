@@ -44,7 +44,14 @@ def apply_env_overrides(config: dict) -> dict:
 
 
 def snapshot() -> dict:
-    return {p.name: (p.read_text(encoding="utf-8") if p.exists() else None) for p in STATE_FILES}
+    """State content minus the run timestamp, so we only commit when an alert actually happened."""
+    out = {}
+    for p in STATE_FILES:
+        data = rw.load_json(p, None)
+        if isinstance(data, dict):
+            data = {k: v for k, v in data.items() if k != "_last_run"}
+        out[p.name] = json.dumps(data, sort_keys=True)
+    return out
 
 
 def sync_state_from_git() -> None:

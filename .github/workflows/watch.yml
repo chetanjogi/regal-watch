@@ -1,23 +1,33 @@
 name: Regal + Cinemark watch
 
+# Each job polls for ~52 minutes and, shortly before finishing, dispatches its
+# own successor. GitHub honours workflow_dispatch immediately, unlike cron,
+# which we observed skipping for hours. The cron below is only a safety net
+# that restarts the chain if it ever dies.
+
 on:
   schedule:
-    # A new 50-minute polling job starts every 30 minutes, so two jobs overlap
-    # and a delayed cron start never leaves a gap. Each job polls every 4 min.
     - cron: "*/30 * * * *"
   workflow_dispatch:
     inputs:
       loop_minutes:
-        description: "How long this manual run polls (minutes)"
-        default: "50"
+        description: "Test runs only: poll this many minutes and do NOT chain. Leave empty to (re)start the normal chain."
+        required: false
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   watch:
     runs-on: ubuntu-latest
     timeout-minutes: 58
+    env:
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      EMAIL_TO: ${{ secrets.EMAIL_TO }}
+      POLL_MINUTES: "4"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,10 +41,31 @@ jobs:
 
       - name: Poll Regal and Cinemark
         env:
-          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-          EMAIL_TO: ${{ secrets.EMAIL_TO }}
-          LOOP_MINUTES: ${{ github.event.inputs.loop_minutes || '50' }}
-          POLL_MINUTES: "4"
+          LOOP_MINUTES: ${{ github.event.inputs.loop_minutes || '46' }}
+        run: python cloud_loop.py
+
+      - name: Start the next job (keeps the chain alive)
+        if: always() && github.event.inputs.loop_minutes == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Skip if another run is queued or was started < 30 min ago: that run
+          # will reach this step itself and dispatch. Keeps concurrency at 1-2.
+          now=$(date +%s)
+          young=$(gh run list --workflow "Regal + Cinemark watch" --limit 20 \
+                  --json databaseId,status,createdAt \
+                  --jq --arg me "${{ github.run_id }}" --argjson now "$now" \
+                  '[.[] | select((.databaseId|tostring) != $me)
+                         | select(.status == "queued" or .status == "waiting" or .status == "in_progress")
+                         | select(($now - (.createdAt | fromdateiso8601)) < 1800)] | length')
+          echo "other young/queued runs: $young"
+          if [ "$young" -eq 0 ]; then
+            gh workflow run "Regal + Cinemark watch" --ref main
+            echo "dispatched successor"
+          fi
+
+      - name: Cover the successor's start-up
+        if: always() && github.event.inputs.loop_minutes == ''
+        env:
+          LOOP_MINUTES: "5"
         run: python cloud_loop.py

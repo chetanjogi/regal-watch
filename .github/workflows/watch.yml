@@ -6,6 +6,10 @@ on:
     # and a delayed cron start never leaves a gap. Each job polls every 4 min.
     - cron: "*/30 * * * *"
   workflow_dispatch:
+    inputs:
+      loop_minutes:
+        description: "How long this manual run polls (minutes)"
+        default: "50"
 
 permissions:
   contents: write
@@ -31,6 +35,6 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
-          LOOP_MINUTES: "50"
+          LOOP_MINUTES: ${{ github.event.inputs.loop_minutes || '50' }}
           POLL_MINUTES: "4"
         run: python cloud_loop.py

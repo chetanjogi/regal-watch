@@ -184,7 +184,38 @@ def find_movies(page: dict, query: str, fuzzy: bool = False) -> list[dict]:
     return [dict(m, title=m["title"] + "   (closest match, not exact)") for s, m in scored[:5] if s > 0.6]
 
 
+THEATRE_PATHS: dict[str, str] = {}   # theatre_code -> path_name, filled by resolve_targets
+_API_BLOCKED = os.environ.get("REGAL_FORCE_HTML") == "1"
+
+
+def board_from_theatre_page(path_name: str) -> dict:
+    """Same shape as the API answer, scraped from the server-rendered theatre page.
+    Used when Cloudflare blocks the JSON API (it does for datacenter IPs such as
+    GitHub Actions) but still serves the HTML pages."""
+    cached = _PAGE_CACHE.get(path_name)
+    if cached and time.time() - cached[0] < 240:  # one 2 MB page per theatre per run, not per date
+        return json.loads(cached[1])
+    html = regal_get(f"{BASE}/theatres/{path_name}")
+    m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.S)
+    if not m:
+        raise RuntimeError("theatre page without __NEXT_DATA__")
+    pp = json.loads(m.group(1))["props"]["pageProps"]
+    board = {
+        "shows": pp.get("showtimes") or [],
+        "futureShows": pp.get("futureShows") or [],
+        "movies": pp.get("movies") or [],
+        "datesWithShows": pp.get("datesWithShows") or [],
+        "_source": "html",
+    }
+    _PAGE_CACHE[path_name] = (time.time(), json.dumps(board))
+    return board
+
+
+_PAGE_CACHE: dict[str, tuple[float, str]] = {}
+
+
 def get_showtimes(theatre_code: str, day: date, ho_code: str = "") -> dict:
+    global _API_BLOCKED
     params = {
         "theatres": theatre_code,
         "date": day.strftime("%Y-%m-%d"),
@@ -192,7 +223,24 @@ def get_showtimes(theatre_code: str, day: date, ho_code: str = "") -> dict:
         "ignoreCache": "false",
         "moviesOnly": "false",
     }
-    return json.loads(regal_get(SHOWTIMES_API, params))
+    if not _API_BLOCKED:
+        try:
+            return json.loads(regal_get(SHOWTIMES_API, params))
+        except RuntimeError as e:
+            if "HTTP 403" not in str(e):
+                raise
+            _API_BLOCKED = True
+            log("Regal JSON API is blocked from this network; using theatre pages instead")
+    path = THEATRE_PATHS.get(theatre_code)
+    if not path:
+        raise RuntimeError(f"no path_name known for theatre {theatre_code}")
+    board = board_from_theatre_page(path)
+    if ho_code:  # the page only renders today's grid; other days come back empty
+        board["shows"] = [
+            dict(s, Film=[f for f in s.get("Film", []) if f.get("MasterMovieCode") == ho_code])
+            for s in board["shows"] if s.get("AdvertiseShowDate", "")[:10] == day.isoformat()
+        ]
+    return board
 
 
 def parse_future_date(s: str) -> date:
@@ -384,6 +432,8 @@ def resolve_targets(config: dict, page: dict) -> tuple[list[dict], list[dict]]:
             log(f"NOTE: '{t}' matched {len(hits)} theatres, using first: {hits[0]['name']} ({hits[0]['theatre_code']})")
         h = hits[0]
         theatres.append({"name": h["name"], "theatre_code": h["theatre_code"], "path_name": h["path_name"]})
+    for t in theatres:
+        THEATRE_PATHS[t["theatre_code"]] = t["path_name"]
 
     movies = []
     for m in config.get("movies", []):
@@ -464,7 +514,13 @@ def check_once(config: dict, announce: bool = True) -> dict:
                                          dates[: int(config.get("max_days_to_scan", 7))])
                 new_perf_ids = [p["perf_id"] for p in perfs if p["perf_id"] not in tst["perf_ids"]]
                 top = best_perfs(perfs, prefs)
-                best_link = top[0]["link"] if top else f"{BASE}/theatres/{th['path_name']}"
+                if not top:
+                    # API blocked (cloud): no per-showtime links, so link each date's page instead
+                    top = [{"date": d.isoformat(), "time": "see page", "group": "",
+                            "link": f"{BASE}/theatres/{th['path_name']}?date={d:%m-%d-%Y}",
+                            "perf_id": None, "sold_out": False, "attrs": []}
+                           for d in dates[:5]]
+                best_link = top[0]["link"]
                 summary.setdefault(key_movie, {})[f"{tcode}:{fcode}"] = {
                     "on_sale": True, "title": title, "dates": [d.isoformat() for d in dates],
                     "showtimes": len(perfs), "best": top[:3],

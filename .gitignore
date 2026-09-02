@@ -1,0 +1,5 @@
+# personal config with your ntfy topic / email password: never commit
+config.json
+regal_watch.log
+__pycache__/
+# state files ARE committed on purpose: the cloud job uses them to avoid duplicate alerts

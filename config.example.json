@@ -1,0 +1,42 @@
+{
+  "_help": "Copy this file to config.json and edit. Movie and theatre names are enough; run --find-movie / --find-theatre to see what they match.",
+
+  "movies": [
+    "Avengers: Doomsday"
+  ],
+  "theatres": [
+    "Regal Aviation Mall"
+  ],
+
+  "preferences": {
+    "preferred_formats": ["IMAX", "RPX", "Dolby", "2D"],
+    "avoid_formats": ["3D"],
+    "preferred_days": ["Thu", "Fri", "Sat"],
+    "preferred_hours": [17, 22]
+  },
+
+  "poll_minutes": 10,
+  "max_days_to_scan": 7,
+  "open_browser_when_tickets_open": true,
+  "alert_on_new_showtimes": true,
+
+  "notify": {
+    "windows_toast": true,
+    "ntfy": {
+      "server": "https://ntfy.sh",
+      "topic": "",
+      "priority": "high"
+    },
+    "email": {
+      "to": "",
+      "smtp_host": "smtp.gmail.com",
+      "smtp_port": 587,
+      "smtp_user": "",
+      "smtp_password": ""
+    },
+    "telegram": {
+      "bot_token": "",
+      "chat_id": ""
+    }
+  }
+}

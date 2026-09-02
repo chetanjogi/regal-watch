@@ -1,0 +1,34 @@
+{
+  "_note": "Public copy of the config. Secrets (ntfy topic, Gmail app password) are injected from GitHub Secrets by cloud_loop.py, never stored here.",
+
+  "movies": [
+    "The Paradise"
+  ],
+  "theatres": [
+    "0347"
+  ],
+
+  "cinemark": {
+    "zip": "94588",
+    "max_miles": 20,
+    "theatres": []
+  },
+
+  "preferences": {
+    "preferred_formats": ["Telugu", "IMAX", "RPX", "2D"],
+    "avoid_formats": ["3D"],
+    "preferred_days": ["Thu", "Fri", "Sat"],
+    "preferred_hours": [17, 22]
+  },
+
+  "max_days_to_scan": 7,
+  "open_browser_when_tickets_open": false,
+  "alert_on_new_showtimes": true,
+
+  "notify": {
+    "windows_toast": false,
+    "ntfy": { "server": "https://ntfy.sh", "topic": "", "priority": "high" },
+    "email": { "to": "", "smtp_host": "smtp.gmail.com", "smtp_port": 587, "smtp_user": "", "smtp_password": "" },
+    "telegram": { "bot_token": "", "chat_id": "" }
+  }
+}

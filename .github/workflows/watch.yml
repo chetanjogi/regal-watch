@@ -1,0 +1,36 @@
+name: Regal + Cinemark watch
+
+on:
+  schedule:
+    # A new 50-minute polling job starts every 30 minutes, so two jobs overlap
+    # and a delayed cron start never leaves a gap. Each job polls every 4 min.
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 58
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: python -m pip install --quiet requests curl_cffi
+
+      - name: Poll Regal and Cinemark
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          LOOP_MINUTES: "50"
+          POLL_MINUTES: "4"
+        run: python cloud_loop.py

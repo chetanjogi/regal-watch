@@ -53,8 +53,8 @@ jobs:
           # will reach this step itself and dispatch. Keeps concurrency at 1-2.
           now=$(date +%s)
           young=$(gh run list --workflow "Regal + Cinemark watch" --limit 20 \
-                  --json databaseId,status,createdAt \
-                  --jq --arg me "${{ github.run_id }}" --argjson now "$now" \
+                    --json databaseId,status,createdAt \
+                  | jq --arg me "${{ github.run_id }}" --argjson now "$now" \
                   '[.[] | select((.databaseId|tostring) != $me)
                          | select(.status == "queued" or .status == "waiting" or .status == "in_progress")
                          | select(($now - (.createdAt | fromdateiso8601)) < 1800)] | length')

@@ -3,7 +3,8 @@
     "listed": true,
     "scheduled": true,
     "on_sale": false,
-    "links": []
+    "links": [],
+    "onsale": "Tue Sep 08 06:00 PM"
   },
-  "_last_run": "2026-09-03T18:03:07"
+  "_last_run": "2026-09-03T18:43:48"
 }

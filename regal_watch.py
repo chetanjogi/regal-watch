@@ -544,6 +544,15 @@ def check_once(config: dict, announce: bool = True) -> dict:
                     lines = [f"Tickets are OPEN for \"{title}\" at {th['name']}!",
                              f"{len(perfs)} showtimes across {len(dates)} days (first: {dates[0]:%a %b %d}).", ""]
                     lines += [fmt_perf(p) for p in top]
+                    try:
+                        import prices
+                        rp = prices.regal_adult_price(tcode, top[0]["perf_id"], config) if top[0].get("perf_id") \
+                            else prices.regal_reference(config)
+                        cp = prices.cinemark_reference(config)
+                        lines += [""] + prices.comparison_lines(rp, cp, config)
+                        tst["adult_price"] = rp[0]
+                    except Exception as e:  # noqa: BLE001
+                        log(f"price comparison skipped: {e}")
                     body = "\n".join(lines)
                     log(body)
                     if announce:

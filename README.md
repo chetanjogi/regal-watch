@@ -86,6 +86,26 @@ Public repos get unlimited free Actions minutes.
 - Manual test: Actions tab, "Regal + Cinemark watch", Run workflow, set
   loop_minutes to 1.
 
+## Price comparison
+
+Every tickets-open alert includes the adult price incl. fee and a comparison:
+
+- Regal: read live from Regal's ticket-type endpoint when the JSON API is
+  reachable (your PC); in the cloud it falls back to the live price of a current
+  standard show, or `regal_reference_adult_price` from the config.
+- Cinemark: read from the public seat-map page of the best showtime.
+- If Cinemark is cheaper the alert title starts with "CHEAPER THAN REGAL".
+- AMC: amctheatres.com puts every automated visitor into a queue-it waiting
+  room, so AMC cannot be checked automatically. Alerts include a manual AMC link
+  (`amc_manual_link`).
+
+## Email without a password
+
+In the cloud, `notify.github_issue.enabled` makes an alert open an issue on the
+repo from the Actions bot. GitHub then emails the repo owner with the alert text
+and the booking link. No SMTP credentials needed. Close the issue afterwards or
+leave it; it is only a mail carrier.
+
 ## Notification channels
 
 | Channel | Setup | Reaches your phone? |

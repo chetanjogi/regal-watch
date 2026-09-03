@@ -200,13 +200,20 @@ def check_once(config: dict, announce: bool = True) -> dict:
             best_link = best[3]["link"] if best else d["url"]
             if not st["on_sale"]:
                 st["on_sale"] = True
+                import prices
+                cm_price = prices.cinemark_adult_price(best_link) if best else None
+                regal_price = prices.regal_reference(config)
+                st["adult_price"] = cm_price
                 lines = [f"Tickets are OPEN for \"{d['title'] or title}\" at Cinemark near {zip_code}!", ""]
                 for _, n, t, s in ranked[:6]:
                     lines.append(f"- {n} ({t['miles']} mi) {s['date']} {s['time']}  {s['link']}")
+                lines += [""] + prices.comparison_lines(regal_price, cm_price, config)
                 body = "\n".join(lines)
                 log(body)
+                head = "CHEAPER THAN REGAL, tickets open (Cinemark)" if prices.cinemark_cheaper(regal_price, cm_price) \
+                    else "TICKETS OPEN (Cinemark)"
                 if announce:
-                    notify_all(config, f"TICKETS OPEN (Cinemark): {d['title'] or title}", body, best_link)
+                    notify_all(config, f"{head}: {d['title'] or title}", body, best_link)
                     if config.get("open_browser_when_tickets_open", True):
                         webbrowser.open(best_link)
                         log(f"opened browser at {best_link}")

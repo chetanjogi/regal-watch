@@ -43,8 +43,6 @@ show("API after home (cookies)", s.get(API, timeout=30, headers={
 show("theatre page", s.get(THEATRE, timeout=30))
 show("theatre page ?date", s.get(THEATRE + "?date=09-04-2026", timeout=30))
 show("movie page", s.get("https://www.regmovies.com/movies/avengers-doomsday-HO00012935", timeout=30))
-sys.exit(0)
-
 # --- price / film-day endpoints (added) ---
 s2 = cr.Session(impersonate="chrome")
 s2.get("https://www.regmovies.com/", timeout=30)
@@ -52,3 +50,4 @@ for u in ["https://www.regmovies.com/api/GetTheatreFilmDays?theatreCode=0347&hoC
           "https://www.regmovies.com/api/getTicketsForSession?theatreCode=0347&vistaSession=420804&cartId=&sessionToken=false"]:
     r = s2.get(u, timeout=30, headers={"Accept": "application/json"})
     print(f"{u.split('/api/')[1][:45]:46s} HTTP {r.status_code} len {len(r.content)} cf={r.headers.get('cf-mitigated')}")
+sys.exit(0)

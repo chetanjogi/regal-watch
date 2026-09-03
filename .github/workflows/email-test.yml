@@ -1,0 +1,17 @@
+name: Email test
+# Creates an issue from the Actions bot; GitHub then emails the repo owner.
+# This mirrors exactly how a real ticket alert reaches your inbox.
+on:
+  workflow_dispatch:
+permissions:
+  issues: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Regal Watch test: email channel works" \
+            --body "This is how a ticket alert will arrive. The real one carries the booking link, for example: https://www.cinemark.com/movies/the-paradise-telugu-with-english-subtitles"

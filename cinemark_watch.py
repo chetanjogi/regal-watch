@@ -231,6 +231,26 @@ def check_once(config: dict, announce: bool = True) -> dict:
     return summary
 
 
+def ticket_prices(seatmap_url: str) -> list[dict]:
+    """Ticket types and prices for one showtime, read from the (public) seat-map page.
+    Returns e.g. [{'type': 'Adult', 'price': 15.75, 'fee': 1.99}, ...]."""
+    t = http_get(seatmap_url)
+    rows = []
+    for m in re.finditer(r'<span class="fontbold">([^<]+)</span>.{0,1200}?data-ticket-list-price="([\d.]+)"'
+                         r'.{0,400}?CalculatedListPrice[^>]*>\s*\$([\d.]+)\s*\+\s*\$([\d.]+)\s*Fee', t, re.S):
+        rows.append({"type": htmllib.unescape(m.group(1)).strip(), "price": float(m.group(2)),
+                     "fee": float(m.group(4))})
+    return rows
+
+
+def adult_price(rows: list[dict]) -> float | None:
+    """Best guess at the regular adult price: first type that isn't child/senior/etc."""
+    for r in rows:
+        if not re.search(r"child|senior|student|military|member|club", r["type"], re.I):
+            return round(r["price"] + r["fee"], 2)
+    return round(rows[0]["price"] + rows[0]["fee"], 2) if rows else None
+
+
 def hour_of(t: str) -> float:
     m = re.match(r"(\d{1,2}):(\d{2})(am|pm)", t)
     if not m:

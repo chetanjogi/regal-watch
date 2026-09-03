@@ -210,7 +210,7 @@ def check_once(config: dict, announce: bool = True) -> dict:
                 lines += [""] + prices.comparison_lines(regal_price, cm_price, config)
                 body = "\n".join(lines)
                 log(body)
-                head = "CHEAPER THAN REGAL, tickets open (Cinemark)" if prices.cinemark_cheaper(regal_price, cm_price) \
+                head = "CHEAPER THAN REGAL, tickets open (Cinemark)" if prices.cinemark_cheaper(regal_price, cm_price, config) \
                     else "TICKETS OPEN (Cinemark)"
                 if announce:
                     notify_all(config, f"{head}: {d['title'] or title}", body, best_link)

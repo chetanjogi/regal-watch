@@ -99,6 +99,15 @@ Every tickets-open alert includes the adult price incl. fee and a comparison:
   room, so AMC cannot be checked automatically. Alerts include a manual AMC link
   (`amc_manual_link`).
 
+## Hourly status push and Regal Unlimited
+
+- `digest_every_minutes: 60` makes the cloud loop send a low-priority ntfy
+  push once an hour summarising both chains (listed / scheduled / on sale /
+  on-sale date). It never emails; email is reserved for real events.
+- `regal_unlimited: true` (+ `regal_unlimited_members`, `regal_unlimited_fee`)
+  tells the price logic that Regal costs you only the online fee per ticket,
+  so Cinemark is never flagged as cheaper; alerts state the real comparison.
+
 ## Email without a password
 
 In the cloud, `notify.github_issue.enabled` makes an alert open an issue on the

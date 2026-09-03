@@ -57,5 +57,9 @@
     }
   },
   "regal_reference_adult_price": 20.99,
-  "amc_manual_link": "https://www.amctheatres.com/movies?query=the%20paradise"
+  "amc_manual_link": "https://www.amctheatres.com/movies?query=the%20paradise",
+  "regal_unlimited": true,
+  "regal_unlimited_members": 4,
+  "regal_unlimited_fee": 0.5,
+  "digest_every_minutes": 60
 }

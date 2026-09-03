@@ -88,6 +88,18 @@ def comparison_lines(regal: tuple[float | None, str], cinemark: float | None, co
     """Human lines for an alert, e.g. 'Cinemark $17.74 vs Regal $20.99 (usual): Cinemark is $3.25 cheaper'."""
     lines = []
     rp, rsrc = regal
+    if config.get("regal_unlimited"):
+        fee = float(config.get("regal_unlimited_fee", 0.50))
+        n = int(config.get("regal_unlimited_members", 1))
+        lines.append(f"You have Regal Unlimited: Regal costs only the ~${fee:.2f} online fee per ticket "
+                     f"(x{n} passes) instead of ${rp:.2f}." if rp else
+                     f"You have Regal Unlimited: Regal costs only the ~${fee:.2f} online fee per ticket (x{n} passes).")
+        if cinemark is not None:
+            lines.append(f"Cinemark would be ${cinemark:.2f} per adult, so Regal is far cheaper for you if it gets the movie.")
+        amc = config.get("amc_manual_link")
+        if amc:
+            lines.append(f"AMC blocks automated checks; look manually: {amc}")
+        return lines
     if cinemark is not None and rp is not None:
         diff = round(rp - cinemark, 2)
         tag = "" if rsrc == "live" else f" ({rsrc} price)"
@@ -107,6 +119,8 @@ def comparison_lines(regal: tuple[float | None, str], cinemark: float | None, co
     return lines
 
 
-def cinemark_cheaper(regal: tuple[float | None, str], cinemark: float | None) -> bool:
+def cinemark_cheaper(regal: tuple[float | None, str], cinemark: float | None, config: dict | None = None) -> bool:
+    if config and config.get("regal_unlimited"):
+        return False  # Unlimited: Regal is ~$0.50 a ticket, nothing beats that
     rp, _ = regal
     return cinemark is not None and rp is not None and cinemark < rp

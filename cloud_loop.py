@@ -14,7 +14,10 @@ import os
 import subprocess
 import sys
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+PT = timezone(timedelta(hours=-7))  # Pacific Daylight Time
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -22,7 +25,64 @@ sys.path.insert(0, str(HERE))
 import regal_watch as rw
 import cinemark_watch as cw
 
-STATE_FILES = [rw.STATE_PATH, cw.STATE_PATH]
+DIGEST_PATH = HERE / "state_digest.json"
+STATE_FILES = [rw.STATE_PATH, cw.STATE_PATH, DIGEST_PATH]
+
+
+def digest_text(config: dict, regal: dict, cinemark: dict) -> str:
+    """One-screen status of every watched movie on both chains."""
+    lines = []
+    for movie in config.get("movies", []):
+        r = regal.get(movie, {})
+        lines.append(f"{movie}")
+        # --- Regal ---
+        regal_lines = []
+        for key, v in r.items():
+            if not isinstance(v, dict):
+                continue
+            if v.get("on_sale"):
+                regal_lines.append(f"Regal: TICKETS ON SALE, {v.get('showtimes', '?')} showtimes, first {v.get('dates', ['?'])[0]}")
+            elif v.get("title"):
+                regal_lines.append(f"Regal: on the board as \"{v['title']}\", no showtimes yet")
+            elif v.get("listed"):
+                regal_lines.append("Regal: listed on regmovies.com, not at your theatre yet")
+        lines += regal_lines or ["Regal Hacienda Crossings: not listed yet, checking every 4 min"]
+        # --- Cinemark ---
+        c = cinemark.get(movie, {})
+        if not c or c.get("listed") is False:
+            lines.append("Cinemark: not listed yet")
+        else:
+            th = c.get("theatres", {})
+            on = [n for n, t in th.items() if t.get("on_sale")]
+            sched = [n for n, t in th.items() if t.get("showtimes")]
+            if on:
+                lines.append(f"Cinemark: TICKETS ON SALE at {len(on)} theatre(s) near {config.get('cinemark', {}).get('zip')}")
+            elif sched:
+                lines.append(f"Cinemark: scheduled at {len(sched)} theatre(s), tickets open {c.get('on_sale_date')}, release {c.get('release')}")
+            else:
+                lines.append(f"Cinemark: listed, release {c.get('release')}, tickets open {c.get('on_sale_date')}")
+    lines.append(f"Checked {datetime.now(timezone.utc).astimezone(PT):%a %b %d %I:%M %p} PT")
+    return "\n".join(lines)
+
+
+def maybe_send_digest(config: dict, regal: dict, cinemark: dict) -> None:
+    every = float(config.get("digest_every_minutes", 0) or 0)
+    if every <= 0:
+        return
+    st = rw.load_json(DIGEST_PATH, {})
+    last = st.get("last_sent")
+    if last and (datetime.now(timezone.utc) - datetime.fromisoformat(last)).total_seconds() < every * 60 - 90:
+        return
+    body = digest_text(config, regal, cinemark)
+    n = dict(config.get("notify", {}).get("ntfy", {}))
+    n["priority"] = "low"  # shows in the tray without buzzing
+    try:
+        rw.notify_ntfy(n, "Hourly update: The Paradise", body, None)
+        st["last_sent"] = datetime.now(timezone.utc).isoformat()
+        rw.save_json(DIGEST_PATH, st)
+        rw.log("digest sent:\n" + body)
+    except Exception as e:  # noqa: BLE001
+        rw.log(f"digest failed: {e}")
 
 
 def sh(*args, check=True):
@@ -94,11 +154,14 @@ def main() -> int:
     while True:
         sync_state_from_git()
         before = snapshot()
+        summaries = {}
         for name, mod in (("regal", rw), ("cinemark", cw)):
             try:
-                mod.check_once(config, announce=True)
+                summaries[name] = mod.check_once(config, announce=True) or {}
             except Exception as e:  # noqa: BLE001
                 rw.log(f"{name} ERROR during check: {e!r}")
+                summaries[name] = {}
+        maybe_send_digest(config, summaries.get("regal", {}), summaries.get("cinemark", {}))
         if snapshot() != before:
             push_state()
         if time.time() + poll_minutes * 60 > deadline:

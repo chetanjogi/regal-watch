@@ -137,6 +137,15 @@ def check_once(config: dict, announce: bool = True) -> dict:
         slug, title = hits[0]
         d = movie_details(slug)
         onsale_txt = f"{d['onsale']:%a %b %d %I:%M %p}" if d["onsale"] else "not announced"
+        # Cinemark moves this date around (it slid from Sep 3 to Sep 8 for The Paradise): say so at once.
+        prev = st.get("onsale")
+        if st["listed"] and prev is not None and prev != onsale_txt and not st["on_sale"]:
+            msg = (f"Cinemark changed the on-sale time for \"{d['title'] or title}\": was {prev}, now {onsale_txt}. "
+                   f"Release {d['release'] or '?'}.")
+            log(msg)
+            if announce:
+                notify_all(config, f"Cinemark moved on-sale time: {d['title'] or title}", msg, d["url"])
+        st["onsale"] = onsale_txt
         if not st["listed"]:
             st["listed"] = True
             msg = (f"Cinemark lists \"{d['title'] or title}\". Release {d['release'] or '?'}; "

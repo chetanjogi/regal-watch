@@ -17,6 +17,7 @@ on:
 permissions:
   contents: write
   actions: write
+  issues: write   # an alert opens an issue -> GitHub emails you, no SMTP password needed
 
 jobs:
   watch:
@@ -28,6 +29,7 @@ jobs:
       SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
       EMAIL_TO: ${{ secrets.EMAIL_TO }}
       POLL_MINUTES: "4"
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:

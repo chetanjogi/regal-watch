@@ -399,9 +399,21 @@ def notify_telegram(cfg: dict, title: str, body: str, link: str | None) -> None:
     log("telegram sent")
 
 
+def notify_github_issue(cfg: dict, title: str, body: str, link: str | None) -> None:
+    """Cloud-only, credential-free email: opening an issue on your own repo makes
+    GitHub email you (notifications@github.com) with the title and a link."""
+    if not cfg.get("enabled") or not os.environ.get("GH_TOKEN") or not os.environ.get("GITHUB_REPOSITORY"):
+        return
+    text = body + (f"\n\n**[Open booking page]({link})**" if link else "")
+    subprocess.run(["gh", "issue", "create", "--repo", os.environ["GITHUB_REPOSITORY"],
+                    "--title", title, "--body", text], check=True, capture_output=True, timeout=60)
+    log("github issue created (email via GitHub notifications)")
+
+
 def notify_all(config: dict, title: str, body: str, link: str | None = None) -> None:
     n = config.get("notify", {})
     channels = {
+        "github_issue": lambda: notify_github_issue(n.get("github_issue", {}), title, body, link),
         "ntfy": lambda: notify_ntfy(n.get("ntfy", {}), title, body, link),
         "toast": lambda: notify_toast(title, body, link) if n.get("windows_toast", True) else None,
         "email": lambda: notify_email(n.get("email", {}), title, body, link),
